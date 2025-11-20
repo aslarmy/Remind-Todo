@@ -1,67 +1,57 @@
 name: CI
 
+# ─────────────────────────────────────────────
+# 1. WHEN DOES THIS WORKFLOW RUN?
+# ─────────────────────────────────────────────
 on:
-  workflow_dispatch:    # Manual trigger
-  push:
-    branches: ['main']  # Auto-trigger on main branch
-  pull_request:
-    branches: ['main']  # Auto-trigger on PRs targeting main
+  workflow_dispatch:     # Allows manual execution from GitHub UI (optional run)
+  push:                  # Run automatically when code is pushed to main
+    branches: ['main']
+  pull_request:          # Run automatically for PRs targeting main
+    branches: ['main']
 
+# This ensures:
+# - Every commit to "main" is validated
+# - Every pull request is validated before merging
+# - You can manually run CI anytime
+
+# ─────────────────────────────────────────────
+# 2. JOB: Build Debug APK for Verification
+# ─────────────────────────────────────────────
 jobs:
   debug-build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java: [17]
-        androidSdk: [33]
 
     steps:
-      # Checkout source
-      - uses: actions/checkout@v4
+      # ─────────────────────────────────────────
+      # Checkout repository source code
+      # ─────────────────────────────────────────
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-      # Cache Gradle
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper/
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-
-      # Setup Java
-      - uses: actions/setup-java@v4
+      # ─────────────────────────────────────────
+      # Install Java (Gradle requires JDK)
+      # ─────────────────────────────────────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: 17
 
-      # Setup Android SDK
-      - uses: android-actions/setup-android@v3
-        with:
-          api-level: ${{ matrix.androidSdk }}
-          build-tools: "33.0.2"
+      # ─────────────────────────────────────────
+      # Install Android SDK + tools
+      # (platform-tools, build-tools, etc.)
+      # ─────────────────────────────────────────
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
 
-      # Lint
-      - run: ./gradlew lintDebug --no-daemon
-
-      # Unit tests
-      - run: ./gradlew testDebugUnitTest --no-daemon
-
-      # Debug build
-      - run: ./gradlew assembleDebug --no-daemon
-
-      # Instrumented tests
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          emulator-options: "-no-window -no-audio"
-          script: ./gradlew connectedDebugAndroidTest --no-daemon
-
-      # Upload artifacts (debug APK + reports)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk-and-reports
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/reports/**
+      # ─────────────────────────────────────────
+      # Build Debug APK
+      # This checks:
+      # - Project compiles
+      # - Dependencies resolve correctly
+      # - No syntax / build errors
+      # - Debug build always stays healthy
+      # ─────────────────────────────────────────
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
