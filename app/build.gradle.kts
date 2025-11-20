@@ -1,5 +1,4 @@
 import java.util.Properties
-import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -26,8 +25,8 @@ android {
         targetSdk = 36
 
         // Automatically set versionName from tag
-        val gitTag = System.getenv("GITHUB_REF_NAME") ?: "0.0.0"
-        versionName = gitTag.removePrefix("v") // e.g., v1.2.3 → 1.2.3
+        val gitTag = findProperty("GIT_TAG") as? String ?: "0.0.0"
+        versionName = gitTag.removePrefix("v")
 
         // Automatically set versionCode based on commits
         val versionCodeFromGit = "git rev-list --count HEAD".runCommand()
@@ -101,6 +100,5 @@ dependencies {
 }
 
 // Helper function to run shell commands in Gradle
-fun String.runCommand(): String {
-    return Runtime.getRuntime().exec(this).inputStream.bufferedReader().readText().trim()
-}
+fun String.runCommand(): String =
+    Runtime.getRuntime().exec(this).inputStream.bufferedReader().readText().trim()
