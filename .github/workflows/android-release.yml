@@ -36,9 +36,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Build Signed Release APK & AAB
-        run: ./gradlew clean assembleRelease bundleRelease --no-daemon -PGIT_TAG=${GITHUB_REF#refs/tags/}
-        env:
-          GITHUB_REF: ${{ github.ref }}
+        run: ./gradlew clean assembleRelease bundleRelease --no-daemon
 
       - name: Upload APK/AAB to GitHub Release
         uses: softprops/action-gh-release@v1
