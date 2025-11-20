@@ -1,31 +1,61 @@
 name: Release Android App
 
+# ─────────────────────────────────────────────
+# 1. WHEN DOES THIS WORKFLOW RUN?
+# ─────────────────────────────────────────────
 on:
-  workflow_dispatch:    # Manual trigger
+  workflow_dispatch:  # Allows manual trigger from the GitHub UI
   push:
     tags:
-      - 'v*'           # Only run on tags like v1.0.0
+      - 'v*'          # Runs automatically when a tag like v1.0.0 or v2.3.4 is pushed
 
+# Example tag push:
+#   git tag v1.2.0
+#   git push origin v1.2.0
+
+# This ensures releases ONLY happen when an intentional version tag is created.
+
+# ─────────────────────────────────────────────
+# 2. MAIN JOB: Build & Publish Signed Release
+# ─────────────────────────────────────────────
 jobs:
   release-build:
     runs-on: ubuntu-latest
+
     steps:
+      # ─────────────────────────────────────────
+      # Checkout repository source code
+      # ─────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      # ─────────────────────────────────────────
+      # Set up Java (required for Android Gradle)
+      # ─────────────────────────────────────────
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: 17
+          distribution: temurin
 
+      # ─────────────────────────────────────────
+      # Install Android SDK + required build tools
+      # ─────────────────────────────────────────
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Prepare keystore
+      # ─────────────────────────────────────────
+      # Decode Keystore + Generate keystore.properties file
+      # Used by Gradle signingConfigs.release
+      # ─────────────────────────────────────────
+      - name: Prepare Keystore
         run: |
           mkdir -p app
+
+          # Decode base64 → app/release.jks
           echo "$KEYSTORE_BASE64" | base64 --decode > app/release.jks
+
+          # Create keystore.properties inside /app
           cat <<EOF > app/keystore.properties
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
@@ -35,9 +65,24 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Build Signed Release APK & AAB
-        run: ./gradlew clean assembleRelease bundleRelease --no-daemon
+      # ─────────────────────────────────────────
+      # Build Signed APK + AAB
+      # Pass tag name from GITHUB_REF → GIT_TAG
+      # This enables auto-versioning in Gradle
+      # ─────────────────────────────────────────
+      - name: Build Signed Release
+        run: |
+          ./gradlew clean assembleRelease bundleRelease --no-daemon \
+            -PGIT_TAG=${GITHUB_REF#refs/tags/}
+        env:
+          GITHUB_REF: ${{ github.ref }}
 
+      # ─────────────────────────────────────────
+      # Upload APK + AAB to GitHub Release page
+      # Uses softprops/action-gh-release
+      # Automatically attaches build outputs
+      # to the tag’s release page
+      # ─────────────────────────────────────────
       - name: Upload APK/AAB to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -45,4 +90,4 @@ jobs:
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # Provided automatically by GitHub
