@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push: # Trigger on push to any branch
+    branches: [ '**' ]
+  pull_request: # Trigger on any PR
+    branches: [ '**' ]
+
+jobs:
+  debug-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
