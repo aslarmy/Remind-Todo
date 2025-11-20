@@ -1,15 +1,14 @@
 name: Release Android App
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:    # Manual trigger
   push:
     tags:
-      - "v*"
+      - 'v*'           # Only run on tags like v1.0.0
 
 jobs:
-  build:
+  release-build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,10 +35,12 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Build Signed Release
-        run: ./gradlew clean assembleRelease bundleRelease --no-daemon
+      - name: Build Signed Release APK & AAB
+        run: ./gradlew clean assembleRelease bundleRelease --no-daemon -PGITHUB_REF_NAME=${GITHUB_REF_NAME}
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
-      - name: Upload APK/AAB to Release Page
+      - name: Upload APK/AAB to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |

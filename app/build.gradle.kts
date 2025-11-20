@@ -24,8 +24,14 @@ android {
         applicationId = "com.sk.remindtodo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+
+        // Automatically set versionName from tag
+        val gitTag = System.getenv("GITHUB_REF_NAME") ?: "0.0.0"
+        versionName = gitTag.removePrefix("v") // e.g., v1.2.3 → 1.2.3
+
+        // Automatically set versionCode based on commits
+        val versionCodeFromGit = "git rev-list --count HEAD".runCommand()
+        versionCode = versionCodeFromGit.toInt()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -92,4 +98,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Helper function to run shell commands in Gradle
+fun String.runCommand(): String {
+    return Runtime.getRuntime().exec(this).inputStream.bufferedReader().readText().trim()
 }
