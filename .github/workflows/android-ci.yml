@@ -1,10 +1,11 @@
 name: CI
 
 on:
-  push: # Trigger on push to any branch
-    branches: [ '**' ]
-  pull_request: # Trigger on any PR
-    branches: [ '**' ]
+  workflow_dispatch:
+  push: # Automatic Trigger on main branch
+    branches: [ 'main' ]
+  pull_request: # Automatic trigger for PRs targeting main
+    branches: [ 'main' ]
 
 jobs:
   debug-build:
