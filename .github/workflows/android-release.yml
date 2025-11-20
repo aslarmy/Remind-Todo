@@ -1,9 +1,10 @@
-name: Build Signed Release APK & AAB
+name: Release Android App
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -25,11 +26,7 @@ jobs:
       - name: Prepare keystore
         run: |
           mkdir -p app
-          
-          # Decode keystore into app/
           echo "$KEYSTORE_BASE64" | base64 --decode > app/release.jks
-          
-          # Create keystore.properties inside app/
           cat <<EOF > app/keystore.properties
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
@@ -39,17 +36,14 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Build Signed Release APK & AAB
+      - name: Build Signed Release
         run: ./gradlew clean assembleRelease bundleRelease --no-daemon
 
-      - name: Upload Signed APK
-        uses: actions/upload-artifact@v4
+      - name: Upload APK/AAB to Release Page
+        uses: softprops/action-gh-release@v1
         with:
-          name: Signed-APK
-          path: app/build/outputs/apk/release/*.apk
-
-      - name: Upload Signed AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Signed-AAB
-          path: app/build/outputs/bundle/release/*.aab
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
